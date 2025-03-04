@@ -1,0 +1,15 @@
+<div class="menu-container">
+  <nav class="toolbar">
+    <div class="logo">UML Designer</div>
+    <button (click)="exportDiagram()">Exportar</button>
+    <input type="file" (change)="importDiagram($event)" />
+  </nav>
+  <div class="workspace">
+    <div class="palette-container">
+      <div id="paletteDiv" class="palette"></div>
+    </div>
+    <div class="content">
+      <div id="diagramDiv" class="diagram-container"></div>
+    </div>
+  </div>
+</div>
