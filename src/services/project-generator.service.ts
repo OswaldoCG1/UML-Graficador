@@ -51,35 +51,57 @@ export class ProjectGeneratorService {
       }
 
       const zip = new JSZip();
-      
-      // Verificar que las plantillas están cargadas
-      if (!this.angularTemplateZip || !this.expressTemplateZip) {
-        throw new Error('Plantillas no inicializadas');
-      }
 
       // Copiar archivos del template Angular
       await this.copyTemplateFiles(zip, projectName, this.angularTemplateZip, 'frontend');
-      
       // Copiar archivos del template Express
       await this.copyTemplateFiles(zip, projectName, this.expressTemplateZip, 'backend');
-      
+
       // === GENERAR COMPONENTES ANGULAR SEGÚN CLASES DEL DIAGRAMA ===
-      console.log('Diagrama recibido:', diagramData);
-      // Extraer clases del diagrama
       const classes = this.extractClassesFromDiagram(diagramData);
-      console.log('Clases extraídas del diagrama:', classes);
+
+      // 1. Leer el archivo de rutas original (standalone)
+      const routesPath = 'frontend/src/app/app.routes.ts';
+      const zipRoutesPath = `${projectName}/frontend/${routesPath}`;
+      let routesContent = await this.angularTemplateZip.file(routesPath)?.async('string');
+      if (!routesContent) {
+        throw new Error('No se encontró app.routes.ts en la plantilla');
+      }
+
+      // 2. Generar imports y rutas
+      let imports = '';
+      let routes = '';
       for (const classData of classes) {
         const className = classData.nombre.replace(/\s/g, '');
+        const kebabName = className.toLowerCase();
+        // Generar componente
         const code = this.generateAngularComponentCode(classData);
-        // Ejemplo: frontend/src/app/clase1/clase1.component.ts
-        const filePath = `${projectName}/frontend/frontend/src/app/${className.toLowerCase()}/${className.toLowerCase()}.component.ts`;
-        zip.file(filePath, code);
+        const compPath = `${projectName}/frontend/frontend/src/app/${kebabName}/${kebabName}.component.ts`;
+        zip.file(compPath, code);
+
+        // Import y ruta (standalone)
+        imports += `import { ${className}Component } from './${kebabName}/${kebabName}.component';\n`;
+        routes += `  { path: '${kebabName}', component: ${className}Component },\n`;
       }
+
+      // 3. Insertar imports y rutas en el archivo de rutas
+      // Insertar imports después de los imports existentes
+      routesContent = routesContent.replace(
+        /(import[^\n]+;\s*)+/,
+        match => match + imports
+      );
+      // Insertar rutas en el array de rutas
+      routesContent = routesContent.replace(
+        /const routes: Routes = \[/,
+        `const routes: Routes = [\n${routes}`
+      );
+
+      // 4. Sobrescribir el archivo de rutas en el ZIP
+      zip.file(zipRoutesPath, routesContent);
 
       // Generar ZIP
       const content = await zip.generateAsync({ type: 'blob' });
       saveAs(content, `${projectName}.zip`);
-      
     } catch (error) {
       console.error('Error al generar el proyecto:', error);
       throw error;
@@ -103,71 +125,28 @@ export class ProjectGeneratorService {
   }
 
   
-  /*private extractClassesFromDiagram(diagramData: any): any[] {
-    if (!diagramData || !diagramData.nodeDataArray) return [];
-    console.log('Diagrama de clases:', diagramData);
-    console.log('Array de nodos:', diagramData.nodeDataArray);
-    // Considera como clase si tiene nombre y al menos atributos o metodos como array
-    return diagramData.nodeDataArray.filter((node: any) => node.nombre);
-  }*/
-
-    
-private extractClassesFromDiagram(diagramData: DiagramData): ClaseDiagrama[] {
-    // Validar estructura del diagrama
-    const safeData: DiagramData = diagramData || {};
-    //console.log('SafeData:', safeData);
-    //console.log('nodeDataArray:', safeData.nodeDataArray);
-  //  console.log('class:', safeData.class);
-  const nodes = Array.isArray(safeData.nodeDataArray) 
-    ? safeData.nodeDataArray 
-    : [];
-    //console.log('nodes:', nodes);
-    console.log('nodeDataArray type:', typeof diagramData.nodeDataArray);
-console.log('nodeDataArray content:', diagramData.nodeDataArray);
-
-  if (!this.isValidDiagramData(diagramData)) {
-    throw new Error('Formato de diagrama inválido');
+private extractClassesFromDiagram(diagramData: any): any[] {
+  if (!diagramData) {
+    console.warn('No diagramData recibido');
+    return [];
   }
-  /*return diagramData.nodeDataArray.map(node => ({
-    nombre: node.nombre,
-    atributos: node.atributos.map(attr => {
-      const [nombre, tipo] = this.parsearPropiedad(attr.text);
-      return {
-        nombre: nombre.trim(),
-        tipo: this.validarTipo(tipo.trim())
-      };
-    }),
-    metodos: node.metodos.map(method => {
-      const [nombre, tipoRetorno] = this.parsearMetodo(method.text);
-      return {
-        nombre: nombre.trim(),
-        tipoRetorno: this.validarTipo(tipoRetorno.trim())
-      };
-    })
-  }));*/
-   // Mapear con valor por defecto si nodeDataArray está vacío
-    return nodes.map(node => {
+  //si viene como string intenta parsear
+  if (typeof diagramData === 'string') {
     try {
-      return {
-        nombre: node.nombre?.trim() || 'ClaseSinNombre',
-        atributos: (node.atributos || []).map(attr => {
-          const [nombre, tipo] = this.parsearPropiedad(attr.text || '');
-          return { nombre: nombre.trim(), tipo: this.validarTipo(tipo.trim()) };
-        }),
-        metodos: (node.metodos || []).map(method => {
-          const [nombre, tipoRetorno] = this.parsearMetodo(method.text || '');
-          return { nombre: nombre.trim(), tipoRetorno: this.validarTipo(tipoRetorno.trim()) };
-        })
-      };
-    } catch (error) {
-      console.warn('Error procesando nodo:', node, error);
-      return {
-        nombre: 'ClaseInvalida',
-        atributos: [],
-        metodos: []
-      };
+      diagramData = JSON.parse(diagramData);
+    } catch {
+      console.warn('diagramData no es JSON válido');
+      return [];
     }
-  });
+  }
+  //nodeDataArray existe y es array
+  const nodes = Array.isArray(diagramData.nodeDataArray)
+    ? diagramData.nodeDataArray
+    : [];
+  console.log('nodeDataArray extraído:', nodes);
+
+  // Considera como clase cualquier nodo con nombre
+  return nodes.filter((node: any) => node && node.nombre && node.atributos && node.metodos);
 }
 
   private generateAngularComponentCode(classData: any): string {
