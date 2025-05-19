@@ -1,6 +1,7 @@
 import { Component } from '@angular/core';
 import * as go from 'gojs';
-import jsPDF from 'jspdf';  // Añadir esta importación
+import jsPDF from 'jspdf';
+import { CodeGeneratorComponent } from "../code-generator/code-generator.component";  
 
 // Herramientas personalizadas para diagramas de secuencia
 class SequenceLinkingTool extends go.LinkingTool {
@@ -41,7 +42,7 @@ class SequenceDraggingTool extends go.DraggingTool {
 @Component({
   selector: 'app-designer',
   standalone: true,
-  imports: [],
+  imports: [CodeGeneratorComponent],
   templateUrl: './designer.component.html',
   styleUrl: './designer.component.css'
 })
