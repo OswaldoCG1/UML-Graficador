@@ -50,6 +50,10 @@ export class DesignerComponent {
   private diagram!: go.Diagram;
   private palette!: go.Palette;
 
+  public get diagramData() {
+    return this.diagram ? this.diagram.model.toJson() : null;
+  }
+
   ngOnInit() {
     this.initDiagram();
     this.initPalette();

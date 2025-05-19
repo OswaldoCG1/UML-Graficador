@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component } from '@angular/core';
+import { Component, Input } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ProjectGeneratorService } from '../../services/project-generator.service';
 
@@ -8,28 +8,27 @@ import { ProjectGeneratorService } from '../../services/project-generator.servic
   standalone: true,
   imports: [CommonModule, FormsModule],
   templateUrl: './code-generator.component.html',
-  styleUrl: './code-generator.component.css'
+  styleUrls: ['./code-generator.component.css']
 })
 export class CodeGeneratorComponent {
-  projectName = 'my-project';
-  constructor(private generator: ProjectGeneratorService) {}
+  @Input() diagramData: any; // Recibe los datos del diagrama desde el padre
+  projectName: string = '';
 
+  constructor(private projectGenerator: ProjectGeneratorService) {}
 
-  async ngOnInit() {
-    await this.generator.loadTemplate();
-  }
-  
-  /*generate() {
-    if (this.projectName) {
-      this.generator.generateProject(this.projectName);
+  async generate() {
+    if (!this.projectName) {
+      alert('Por favor ingresa un nombre para el proyecto');
+      return;
     }
-  }*/
-
-    generate() {
-    if (this.projectName) {
-      const diagramData = JSON.parse(diagram.model.toJson());
-      this.generator.generateProject(this.projectName, diagramData);
+    if (!this.diagramData) {
+      alert('No hay datos de diagrama disponibles');
+      return;
+    }
+    try {
+      await this.projectGenerator.generateProject(this.projectName, this.diagramData);
+    } catch (error) {
+      alert('Error al generar el proyecto: ' + error);
     }
   }
-
 }
