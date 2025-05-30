@@ -54,9 +54,23 @@ export class DesignerComponent {
     return this.diagram ? this.diagram.model.toJson() : null;
   }
 
+  public selectedLinkCategory: string = "";
+
+  public setLinkCategory(category: string) {
+    this.selectedLinkCategory = category;
+    // Cambia la categoría por defecto del LinkingTool
+    console.log(`Setting link category to: ${category}`);
+    if (this.diagram) {
+      (this.diagram.toolManager.linkingTool as any).linkCategory = category;
+    }
+  }
+
   ngOnInit() {
     this.initDiagram();
     this.initPalette();
+
+    // Inicializa la categoría por defecto
+    this.setLinkCategory('');
   }
 
   private initDiagram() {
@@ -176,7 +190,9 @@ export class DesignerComponent {
         {
           locationSpot: go.Spot.Center,
           fromSpot: go.Spot.AllSides,
-          toSpot: go.Spot.AllSides
+          toSpot: go.Spot.AllSides,
+          mouseEnter: (e, node) => showPorts(node, true),
+          mouseLeave: (e, node) => showPorts(node, false)
         },
         new go.Binding("location", "loc", go.Point.parse).makeTwoWay(go.Point.stringify),
         $(go.Shape, "Rectangle",
@@ -208,10 +224,13 @@ export class DesignerComponent {
               row: 1,
               alignment: go.Spot.Left,
               stretch: go.GraphObject.Horizontal,
-              margin: new go.Margin(5, 5, 0, 5)
+              margin: new go.Margin(5, 5, 0, 5),
+              name: "ATTR_SECTION",
             },
             $("Button",
               {
+                name: "ADD_ATTR_BTN",
+                visible: true,
                 alignment: go.Spot.Right,
                 width: 20,
                 height: 20,
@@ -227,7 +246,8 @@ export class DesignerComponent {
                     model.setDataProperty(node.data, "atributos", atributos);
                     model.commitTransaction("add attribute");
                   }
-                }
+                },
+                "_buttonClass": "class-add-btn"
               },
               $(go.TextBlock, "+", {
                 font: "bold 10pt sans-serif",
@@ -250,7 +270,18 @@ export class DesignerComponent {
                   {
                     alignment: go.Spot.Left,
                     stretch: go.GraphObject.Horizontal,
-                    margin: new go.Margin(0, 0, 3, 0)
+                    margin: new go.Margin(0, 0, 3, 0),
+                              name: "ATTR_ROW",
+                    mouseEnter: (e, obj) => {
+                            const panel = obj as go.Panel;
+                            const btn = panel.findObject("REMOVE_ATTR_BTN");
+                            if (btn) btn.visible = true;
+                          },
+                          mouseLeave: (e, obj) => {
+                            const panel = obj as go.Panel;
+                            const btn = panel.findObject("REMOVE_ATTR_BTN");
+                            if (btn) btn.visible = false;
+                          }
                   },
                   $(go.TextBlock,
                     {
@@ -263,6 +294,8 @@ export class DesignerComponent {
                     new go.Binding("text", "text").makeTwoWay()),
                   $("Button",
                     {
+                              name: "REMOVE_ATTR_BTN",
+                      visible: false,
                       alignment: go.Spot.Right,
                       width: 20,
                       height: 20,
@@ -281,7 +314,8 @@ export class DesignerComponent {
                           }
                           model.commitTransaction("remove attribute");
                         }
-                      }
+                      },
+                                  "_buttonClass": "class-remove-btn"
                     },
                     $(go.TextBlock, "×", {
                       font: "bold 10pt sans-serif",
@@ -303,7 +337,7 @@ export class DesignerComponent {
               row: 3,
               alignment: go.Spot.Left,
               stretch: go.GraphObject.Horizontal,
-              margin: new go.Margin(5, 5, 0, 5)
+              margin: new go.Margin(5, 5, 0, 5),
             },
             $("Button",
               {
@@ -322,7 +356,8 @@ export class DesignerComponent {
                     model.setDataProperty(node.data, "metodos", metodos);
                     model.commitTransaction("add method");
                   }
-                }
+                },
+                "_buttonClass": "method-add-btn"
               },
               $(go.TextBlock, "+", {
                 font: "bold 10pt sans-serif",
@@ -345,7 +380,17 @@ export class DesignerComponent {
                   {
                     alignment: go.Spot.Left,
                     stretch: go.GraphObject.Horizontal,
-                    margin: new go.Margin(0, 0, 3, 0)
+                    margin: new go.Margin(0, 0, 3, 0),
+                          mouseEnter: (e, obj) => {
+                            const panel = obj as go.Panel;
+                            const btn = panel.findObject("REMOVE_METHOD_BTN");
+                            if (btn) btn.visible = true;
+                          },
+                          mouseLeave: (e, obj) => {
+                            const panel = obj as go.Panel;
+                            const btn = panel.findObject("REMOVE_METHOD_BTN");
+                            if (btn) btn.visible = false;
+                          }
                   },
                   $(go.TextBlock,
                     {
@@ -358,7 +403,9 @@ export class DesignerComponent {
                     new go.Binding("text", "text").makeTwoWay()),
                   $("Button",
                     {
+                      name: "REMOVE_METHOD_BTN",
                       alignment: go.Spot.Right,
+                      visible: false,
                       width: 20,
                       height: 20,
                       margin: new go.Margin(0, 5, 0, 0),
@@ -376,7 +423,8 @@ export class DesignerComponent {
                           }
                           model.commitTransaction("remove method");
                         }
-                      }
+                      },
+                      "_buttonClass": "method-remove-btn"
                     },
                     $(go.TextBlock, "×", {
                       font: "bold 10pt sans-serif",
@@ -392,7 +440,7 @@ export class DesignerComponent {
         makePort('T', go.Spot.Top, true, true),
         makePort('L', go.Spot.Left, true, true),
         makePort('R', go.Spot.Right, true, true),
-        makePort('B', go.Spot.Bottom, true, true)
+        makePort('B', go.Spot.Bottom, true, true),
       );
 
     // Plantilla para adornar enlaces seleccionados
@@ -455,7 +503,9 @@ export class DesignerComponent {
         {
           locationSpot: go.Spot.Center,
           fromSpot: go.Spot.AllSides,
-          toSpot: go.Spot.AllSides
+          toSpot: go.Spot.AllSides,
+           mouseEnter: (e, node) => showPorts(node, true),
+          mouseLeave: (e, node) => showPorts(node, false)
         },
         new go.Binding("location", "loc", go.Point.parse).makeTwoWay(go.Point.stringify),
         // Cabeza
@@ -516,7 +566,11 @@ export class DesignerComponent {
             textAlign: "center",
             editable: true
           },
-          new go.Binding("text", "nombre").makeTwoWay())
+          new go.Binding("text", "nombre").makeTwoWay()),
+          makePort('T', go.Spot.Top, true, true),
+       // makePort('L', go.Spot.Left, true, true),
+     //   makePort('R', go.Spot.Right, true, true),
+     //   makePort('B', go.Spot.Bottom, true, true),
       );
 
     // Caso de Uso (elipse)
@@ -543,7 +597,11 @@ export class DesignerComponent {
             textAlign: "center",
             wrap: go.TextBlock.WrapFit
           },
-          new go.Binding("text", "nombre").makeTwoWay())
+          new go.Binding("text", "nombre").makeTwoWay()),
+        makePort('T', go.Spot.Top, true, true),
+        makePort('L', go.Spot.Left, true, true),
+        makePort('R', go.Spot.Right, true, true),
+        makePort('B', go.Spot.Bottom, true, true),
       );
 
     // Sistema (rectángulo contenedor)
@@ -675,6 +733,15 @@ export class DesignerComponent {
         if (part instanceof go.Node && part.category === "CasoUso" && part.containingGroup === null) {
           alert("Los casos de uso deben colocarse dentro de un sistema.");
           this.diagram.remove(part);
+        }
+        if (part instanceof go.Node && part.data) {
+            // Clona los arrays para evitar referencias compartidas
+            if (Array.isArray(part.data.atributos)) {
+              this.diagram.model.setDataProperty(part.data, "atributos", part.data.atributos.map((a: any) => ({ ...a })));
+            }
+            if (Array.isArray(part.data.metodos)) {
+              this.diagram.model.setDataProperty(part.data, "metodos", part.data.metodos.map((m: any) => ({ ...m })));
+            }
         }
       });
     });
@@ -1066,6 +1133,92 @@ export class DesignerComponent {
         )
       );
 
+     const package2Template =
+      $(go.Group, "Auto",
+        {
+          locationSpot: go.Spot.Center,
+          resizable: true,
+          resizeObjectName: "MAIN",
+          fromSpot: go.Spot.AllSides,
+          toSpot: go.Spot.AllSides,
+          // Propiedades para que funcione como contenedor
+          isSubGraphExpanded: true,
+          // Layout para elementos internos
+          layout: $(go.GridLayout, {
+            wrappingColumn: 2,
+            spacing: new go.Size(10, 10),
+            alignment: go.GridLayout.Position
+          }),
+          // Mostrar puertos al pasar el ratón - corregidos los tipos
+          mouseEnter: function(e: go.InputEvent, obj: go.GraphObject) {
+            const part = obj.part;
+            if (part) showPorts(part, true);
+          },
+          mouseLeave: function(e: go.InputEvent, obj: go.GraphObject) {
+            const part = obj.part;
+            if (part) showPorts(part, false);
+          }
+        },
+        new go.Binding("location", "loc", go.Point.parse).makeTwoWay(go.Point.stringify),
+        $(go.Panel, "Position",
+          // La pestaña superior
+          $(go.Panel, "Auto",
+            {
+              position: new go.Point(0, 0),
+              width: 55,
+              height: 15
+            },
+            $(go.Shape, "Rectangle",
+              {
+                fill: "white",
+                stroke: "black",
+                strokeWidth: 1
+              }
+            ),
+            $(go.TextBlock,
+              {
+                margin: 2,
+                editable: true,
+                font: "10pt sans-serif"
+              },
+              new go.Binding("text", "nombre").makeTwoWay())
+          ),
+          // El cuerpo principal del paquete
+          $(go.Panel, "Auto",
+            {
+              name: "MAIN",
+              position: new go.Point(0, 15),
+              minSize: new go.Size(100, 60)
+            },
+            $(go.Shape, "Rectangle",
+              {
+                fill: "white",
+                stroke: "black",
+                strokeWidth: 1
+              }
+            ),
+            $(go.Placeholder,
+              {
+                padding: 5
+              }
+            ),
+            // Texto dentro del rectángulo principal
+            $(go.TextBlock,
+              {
+                margin: 5,
+                editable: true,
+                font: "10pt sans-serif",
+                alignment: go.Spot.TopLeft
+              },
+              new go.Binding("text", "attributes").makeTwoWay())
+          ),
+          
+          // Usar makePort en lugar de definir los círculos directamente
+          makePort("L", go.Spot.Left, true, true),
+          makePort("R", go.Spot.Right, true, true)
+        )
+      );
+
     // Flecha de dependencia entre paquetes
     const packageDependencyTemplate =
       $(go.Link,
@@ -1101,6 +1254,7 @@ export class DesignerComponent {
     this.diagram.linkTemplateMap.add("UniversalLink", universalLinkTemplate);
     this.diagram.nodeTemplateMap.add("Circle", circleTemplate);
     this.diagram.groupTemplateMap.add("Package", packageTemplate);
+    this.diagram.groupTemplateMap.add("MVC", packageTemplate);
     this.diagram.linkTemplateMap.add("PackageDependency", packageDependencyTemplate);
 
     // Template para el Contenedor
@@ -1254,6 +1408,92 @@ export class DesignerComponent {
 
     // Agregar el template al diagrama
     this.diagram.groupTemplateMap.add("Container", containerTemplate);
+
+    // Herencia (Generalization): Flecha con triángulo blanco
+    const inheritanceLinkTemplate = $(go.Link,
+      {
+        routing: go.Link.AvoidsNodes,
+        curve: go.Curve.JumpOver,
+        corner: 5,
+        relinkableFrom: true,
+        relinkableTo: true,
+        reshapable: true,
+        toShortLength: 8
+      },
+      $(go.Shape, { stroke: "black", strokeWidth: 2 }),
+      $(go.Shape, {
+        toArrow: "Triangle",
+        fill: "white",
+        stroke: "black",
+        strokeWidth: 2,
+        scale: 1.2
+      })
+    );
+
+    // Agregación Simple: Rombo blanco en el origen
+    const aggregationLinkTemplate = $(go.Link,
+      {
+        routing: go.Link.AvoidsNodes,
+        curve: go.Curve.JumpOver,
+        corner: 5,
+        relinkableFrom: true,
+        relinkableTo: true,
+        reshapable: true,
+        toShortLength: 8
+      },
+      $(go.Shape, { stroke: "black", strokeWidth: 2 }),
+      $(go.Shape, {
+        fromArrow: "Diamond",
+        fill: "white",
+        stroke: "black",
+        strokeWidth: 2,
+        scale: 1.2
+      }),
+      $(go.Shape, {
+        toArrow: "",
+        stroke: "black"
+      })
+    );
+
+    // Agregación Múltiple: Rombo negro en el origen
+    const multiAggregationLinkTemplate = $(go.Link,
+      {
+        routing: go.Link.AvoidsNodes,
+        curve: go.Curve.JumpOver,
+        corner: 5,
+        relinkableFrom: true,
+        relinkableTo: true,
+        reshapable: true,
+        toShortLength: 8
+      },
+      $(go.Shape, { stroke: "black", strokeWidth: 2 }),
+      $(go.Shape, {
+        fromArrow: "Diamond",
+        fill: "black",
+        stroke: "black",
+        strokeWidth: 2,
+        scale: 1.2
+      }),
+      $(go.Shape, {
+        toArrow: "",
+        stroke: "black"
+      })
+    );
+
+    // Registrar los nuevos templates
+    this.diagram.linkTemplateMap.add("Herencia", inheritanceLinkTemplate);
+    this.diagram.linkTemplateMap.add("Agregacion", aggregationLinkTemplate);
+    this.diagram.linkTemplateMap.add("AgregacionMultiple", multiAggregationLinkTemplate);
+    
+    const linkingTool = this.diagram.toolManager.linkingTool;
+    const originalInsertLink = linkingTool.insertLink;
+    linkingTool.insertLink = (fromNode, fromPort, toNode, toPort) => {
+      const link = originalInsertLink.call(linkingTool, fromNode, fromPort, toNode, toPort);
+      if (link && this.selectedLinkCategory) {
+        this.diagram.model.setDataProperty(link.data, "category", this.selectedLinkCategory);
+      }
+      return link;
+    };
   }
 
   exportDiagram() {
@@ -1349,7 +1589,7 @@ export class DesignerComponent {
           duration: 300
         },
         { key: -5, group: "Bob", loc: "120 30", category: "Action" },
-        { key: -6, group: "Hank", loc: "240 60", category: "Action" },
+        { key: -6, group: "Hank", loc: "240 60",category: "Action" },
         { key: -7, group: "Fred", loc: "0 90", category: "Action" },
         { key: -8, group: "Bob", loc: "120 120", category: "Action" },
         { key: -9, group: "Fred", loc: "0 150", category: "Action" },
@@ -1372,6 +1612,7 @@ export class DesignerComponent {
     this.diagram.model = go.Model.fromJson(modeloSecuencia);
   }
 
+  
   private initPalette() {
     const $ = go.GraphObject.make;
     this.palette = $(go.Palette, "paletteDiv", {
@@ -1381,7 +1622,6 @@ export class DesignerComponent {
       linkTemplateMap: this.diagram.linkTemplateMap,
       model: new go.GraphLinksModel(
         [
-          // Mantener los elementos existentes
           {
             key: "Clase",
             nombre: "NombreClase",
@@ -1446,22 +1686,29 @@ export class DesignerComponent {
           {
             key: "Paquete",
             category: "Package",
+            nombre: "Paquete",
+            attributes: "Atributos",  
+            isGroup: true
+          },
+          {
+            key: "Paquete",
+            category: "MVC",
             nombre: "Modelo",
-            attributes: "Attributes",  // Texto por defecto para el cuerpo
+            attributes: "Atributos",  // Texto por defecto para el cuerpo
             isGroup: true
           },
           {
             key: "Package2",
-            category: "Package",
+            category: "MVC",
             nombre: "Vista",
-            attributes: "Attributes",  // Texto por defecto para el cuerpo
+            attributes: "Atributos",  // Texto por defecto para el cuerpo
             isGroup: true
           },
           {
             key: "Package3",
-            category: "Package",
+            category: "MVC",
             nombre: "Controlador",
-            attributes: "Attributes",  // Texto por defecto para el cuerpo
+            attributes: "Atributos",  // Texto por defecto para el cuerpo
             isGroup: true
           },
           {
@@ -1472,7 +1719,7 @@ export class DesignerComponent {
             isGroup: true
           }
         ],
-        [
+        /*[
           // Mantener los enlaces existentes
           {
             key: -1,
@@ -1488,10 +1735,11 @@ export class DesignerComponent {
           {
             category: "PackageDependency",
             points: new go.List().addAll([new go.Point(0, 0), new go.Point(30, 0)])
-          }
-        ]
+          },
+        ]*/
       )
     });
   }
+  
 }
 

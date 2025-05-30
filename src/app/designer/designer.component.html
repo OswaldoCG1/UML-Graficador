@@ -10,6 +10,53 @@
       <div id="paletteDiv" class="palette"></div>
     </div>
     <div class="content">
+      <div class="relation-toolbar-mini">
+        <span title="Tipo de relación">Relación:</span>
+        <button
+          (click)="setLinkCategory('Dependencia')"
+          [class.selected]="selectedLinkCategory === 'Dependencia'"
+          title="Dependencia"
+          style="font-size: 18px; padding: 2px 6px"
+        >
+          &#9675;
+        </button>
+        <button
+          (click)="setLinkCategory('PackageDependency')"
+          [class.selected]="selectedLinkCategory === 'PackageDependency'"
+          title="Dependencia de Paquete"
+          style="font-size: 18px; padding: 2px 6px"
+        >
+          <span style="letter-spacing: 1px">⋯</span>
+        </button>
+        <button
+          (click)="setLinkCategory('Herencia')"
+          [class.selected]="selectedLinkCategory === 'Herencia'"
+          title="Herencia"
+        >
+          &#9651;
+        </button>
+        <button
+          (click)="setLinkCategory('Agregacion')"
+          [class.selected]="selectedLinkCategory === 'Agregacion'"
+          title="Agregación Simple"
+        >
+          &#9671;
+        </button>
+        <button
+          (click)="setLinkCategory('AgregacionMultiple')"
+          [class.selected]="selectedLinkCategory === 'AgregacionMultiple'"
+          title="Agregación Múltiple"
+        >
+          <span style="color: black">&#9670;</span>
+        </button>
+        <button
+          (click)="setLinkCategory('')"
+          [class.selected]="selectedLinkCategory === ''"
+          title="Normal"
+        >
+          <b>&#8594;</b>
+        </button>
+      </div>
       <div id="diagramDiv" class="diagram-container"></div>
     </div>
   </div>

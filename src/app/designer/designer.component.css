@@ -99,6 +99,7 @@
   flex: 1;
   padding: 1rem;
   overflow: auto;
+  position: relative;
 }
 
 .diagram-container {
@@ -137,4 +138,107 @@
 
 ::-webkit-scrollbar-thumb:hover {
   background: #3f51b5;
+}
+
+.relation-toolbar-mini {
+  position: absolute;
+  top: 18px;
+  right: 30px;
+  z-index: 10;
+  background: #fff;
+  border-radius: 20px;
+  box-shadow: 0 2px 8px rgba(60,60,60,0.08);
+  padding: 3px 10px 3px 10px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 13px;
+  border: 1px solid #e0e0e0;
+}
+
+.relation-toolbar-mini button {
+  background: none;
+  border: none;
+  font-size: 18px;
+  padding: 2px 6px;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: background 0.2s;
+  color: #3949ab;
+  outline: none;
+}
+
+.relation-toolbar-mini button.selected,
+.relation-toolbar-mini button:hover {
+  background: #e8eaf6;
+  color: #1a237e;
+}
+
+.relation-toolbar-mini span {
+  font-size: 12px;
+  color: #666;
+  margin-right: 4px;
+}
+
+/* Botón pequeño y circular para agregar */
+.class-add-btn {
+  background: #e8eaf6;
+  border: none;
+  border-radius: 50%;
+  width: 22px;
+  height: 22px;
+  font-size: 16px;
+  color: #3949ab;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: 6px;
+  opacity: 0.7;
+  transition: background 0.2s, opacity 0.2s;
+}
+.class-add-btn:hover {
+  background: #c5cae9;
+  opacity: 1;
+}
+
+/* Botón para eliminar atributo/método */
+.class-remove-btn {
+  background: transparent;
+  border: none;
+  color: #d32f2f;
+  font-size: 15px;
+  margin-left: 4px;
+  border-radius: 50%;
+  width: 18px;
+  height: 18px;
+  opacity: 0.5;
+  cursor: pointer;
+  transition: background 0.2s, opacity 0.2s;
+  display: none;
+}
+.class-remove-btn:hover {
+  background: #ffcdd2;
+  opacity: 1;
+}
+
+/* Mostrar el botón de eliminar solo al pasar el mouse */
+.class-attr-row:hover .class-remove-btn,
+.class-method-row:hover .class-remove-btn {
+  display: inline-flex;
+  opacity: 1;
+}
+
+/* Mostrar el botón de agregar solo al pasar el mouse por la sección */
+.class-attr-section:hover .class-add-btn,
+.class-method-section:hover .class-add-btn {
+  opacity: 1;
+  display: inline-flex;
+}
+.class-add-btn {
+  display: none;
+}
+.class-attr-section:hover .class-add-btn,
+.class-method-section:hover .class-add-btn {
+  display: inline-flex;
 }
