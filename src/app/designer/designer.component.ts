@@ -2,6 +2,7 @@ import { Component } from '@angular/core';
 import * as go from 'gojs';
 import jsPDF from 'jspdf';
 import { CodeGeneratorComponent } from "../code-generator/code-generator.component";  
+import { ToastrService } from 'ngx-toastr';
 
 // Herramientas personalizadas para diagramas de secuencia
 class SequenceLinkingTool extends go.LinkingTool {
@@ -49,6 +50,8 @@ class SequenceDraggingTool extends go.DraggingTool {
 export class DesignerComponent {
   private diagram!: go.Diagram;
   private palette!: go.Palette;
+    constructor(private toastr: ToastrService) {}
+
 
   public get diagramData() {
     return this.diagram ? this.diagram.model.toJson() : null;
@@ -730,19 +733,26 @@ export class DesignerComponent {
 
     this.diagram.addDiagramListener("ExternalObjectsDropped", (e) => {
       e.subject.each((part: go.Part) => {
-        if (part instanceof go.Node && part.category === "CasoUso" && part.containingGroup === null) {
-          alert("Los casos de uso deben colocarse dentro de un sistema.");
-          this.diagram.remove(part);
-        }
-        if (part instanceof go.Node && part.data) {
-            // Clona los arrays para evitar referencias compartidas
-            if (Array.isArray(part.data.atributos)) {
-              this.diagram.model.setDataProperty(part.data, "atributos", part.data.atributos.map((a: any) => ({ ...a })));
+        if (part instanceof go.Node && part.data && part.data.nombre) {
+          // Solo para nodos de clase
+          if (part.data.category === undefined || part.data.category === "Clase") {
+            const nombre = part.data.nombre.trim();
+            // Busca si ya existe una clase con ese nombre (ignorando mayúsculas/minúsculas)
+            const existe = this.diagram.model.nodeDataArray.some(
+              (n: any) =>
+                n !== part.data &&
+                (n.category === undefined || n.category === "Clase") &&
+                n.nombre &&
+                n.nombre.trim().toLowerCase() === nombre.toLowerCase()
+            );
+            if (existe) {
+              this.toastr.error(`Ya existe una clase con el nombre "${nombre}".`, "Nombre duplicado");
+              // Elimina el nodo recién agregado
+              this.diagram.remove(part);
             }
-            if (Array.isArray(part.data.metodos)) {
-              this.diagram.model.setDataProperty(part.data, "metodos", part.data.metodos.map((m: any) => ({ ...m })));
-            }
+          }
         }
+        // ...tu código existente para clonar arrays...
       });
     });
 
@@ -758,8 +768,34 @@ export class DesignerComponent {
     // Evento para evitar que los enlaces queden vacíos después de editarse
     this.diagram.addDiagramListener("TextEdited", (e) => {
       const tb = e.subject as go.TextBlock;
+      console.log("TextEdited event triggered", tb.part!.data);
       if (tb && tb.part && tb.part.data && tb.text.trim() === "") {
         this.diagram.model.setDataProperty(tb.part.data, "text", "Escribe aquí...");
+      }
+      // Validar nombre duplicado al editar el nombre de una clase
+      if (
+        tb &&
+        tb.part &&
+        tb.part.data &&
+        (tb.part.data.category === undefined || tb.part.data.category === "Clase") &&
+        tb.name === undefined // Solo el nombre principal, no atributos/metodos
+      ) {
+        const nuevoNombre = tb.text.trim();
+        const existe = this.diagram.model.nodeDataArray.some(
+          (n: any) =>
+            n !== tb.part!.data &&
+            (n.category === undefined || n.category === "Clase") &&
+            n.nombre &&
+            n.nombre.trim().toLowerCase() === nuevoNombre.toLowerCase()
+        );
+        if (existe) {
+          this.toastr.error(`Ya existe una clase con el nombre "${nuevoNombre}".`, "Nombre duplicado");
+          // Revertir el cambio
+          this.diagram.model.setDataProperty(tb.part.data, "nombre", tb.part.data.nombre);
+        } else {
+          // Si es válido, actualiza el nombre
+          this.diagram.model.setDataProperty(tb.part.data, "nombre", nuevoNombre);
+        }
       }
     });
 

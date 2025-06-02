@@ -76,17 +76,22 @@ const relations = this.extractRelationsFromDiagram(diagramData);
         const className = classData.nombre.replace(/\s/g, '');
         const kebabName = className.toLowerCase();
 
+        // Servicio Angular
+        const serviceCode = this.generateAngularServiceCode(classData, relations, classes);
+        const servicePath = `${projectName}/frontend/frontend/src/app/componentes/generados/${kebabName}/${kebabName}.service.ts`;
+        zip.file(servicePath, serviceCode);
+
         // Generar TypeScript
         const code = this.generateAngularComponentCode(classData, classes, relations);
         const compPath = `${projectName}/frontend/frontend/src/app/componentes/generados/${kebabName}/${kebabName}.component.ts`;
         zip.file(compPath, code);
 
         // Generar HTML
-        const html = this.generateAngularComponentHtml(classData);
+        const html = this.generateAngularComponentHtml(classData, classes, relations);
         const htmlPath = `${projectName}/frontend/frontend/src/app/componentes/generados/${kebabName}/${kebabName}.component.html`;
         zip.file(htmlPath, html);
 
-        // (Opcional: CSS vacío)
+        // CSS vacío
         const cssPath = `${projectName}/frontend/frontend/src/app/componentes/generados/${kebabName}/${kebabName}.component.css`;
         zip.file(cssPath, '');
 
@@ -234,19 +239,11 @@ private extractClassesFromDiagram(diagramData: any): any[] {
 
   private generateAngularComponentCode(classData: any, classes: any[], relations: any[]): string {
   const className = classData.nombre.replace(/\s/g, '');
-  const selector = `app-${className.toLowerCase()}`;
-  const atributos = (classData.atributos || [])
-    .map((a: any) => {
-      const match = a.text.match(/([+\-#])?\s*([\w\d_]+)\s*:\s*([\w\d_]+)/);
-      if (match) {
-        return `  ${match[2]}: ${match[3]};`;
-      }
-      return `  // ${a.text}`;
-    })
-    .join('\n');
+  const kebabName = className.toLowerCase();
+  const selector = `app-${kebabName}`;
+  const serviceName = `${className}Service`;
 
-  // --- Herencia de métodos ---
-  // 1. Busca si esta clase hereda de otra
+  // Herencia de métodos
   const herencia = relations.find(rel =>
     rel.category === 'Herencia' &&
     (rel.from === classData.key || rel.from === classData.nombre)
@@ -258,7 +255,6 @@ private extractClassesFromDiagram(diagramData: any): any[] {
       parentMethods = parentClass.metodos || [];
     }
   }
-  // 2. Une métodos propios y heredados (sin duplicados)
   const allMethods = [
     ...(classData.metodos || []),
     ...parentMethods.filter(pm =>
@@ -266,32 +262,62 @@ private extractClassesFromDiagram(diagramData: any): any[] {
     )
   ];
 
-  const metodos = allMethods
-    .map((m: any) => {
-      const match = m.text.match(/([+\-#])?\s*([\w\d_]+)\s*\(\)\s*:\s*([\w\d_]+)/);
-      if (match) {
-        return `  ${match[2]}(): ${match[3]} {\n    // TODO: implementar\n  }`;
-      }
-      return `  // ${m.text}`;
-    })
-    .join('\n\n');
+  // Métodos personalizados (standby)
+  const customMethods = allMethods.map((m: any) => {
+    const match = m.text.match(/([+\-#])?\s*([\w\d_]+)\s*\(\)\s*:\s*([\w\d_]+)/);
+    if (match) {
+      const nombre = match[2];
+      return `
+  ${nombre}() {
+    this.${kebabName}Service.${nombre}({}).subscribe(resp => {
+      // TODO: manejar respuesta de ${nombre}
+    });
+  }`;
+    }
+    return '';
+  }).join('\n');
 
   return `
-import { Component } from '@angular/core';
-import { MenuComponent } from "../../menu/menu.component";
+import { Component, OnInit } from '@angular/core';
+import { ${serviceName} } from './${kebabName}.service';
+import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
+import { MenuComponent } from '../../menu/menu.component';
 
 @Component({
   selector: '${selector}',
   standalone: true,
-  imports: [MenuComponent],
-  templateUrl: './${className}.component.html',
-  styleUrls: ['./${className}.component.css']
+  imports: [CommonModule, FormsModule, MenuComponent],
+  templateUrl: './${kebabName}.component.html',
+  styleUrls: ['./${kebabName}.component.css']
 })
-export class ${className}Component {
-/*${atributos}
-${metodos}
-*/
-// TODO: CRUD básico aquí
+export class ${className}Component implements OnInit {
+  items: any[] = [];
+  selectedItem: any = null;
+
+  constructor(private ${kebabName}Service: ${serviceName}) {}
+
+  ngOnInit() {
+    this.loadAll();
+  }
+
+  loadAll() {
+    this.${kebabName}Service.getAll().subscribe(data => this.items = data);
+  }
+
+  selectItem(item: any) {
+    this.selectedItem = { ...item };
+  }
+
+  save() {
+    if (this.selectedItem.id) {
+      this.${kebabName}Service.update(this.selectedItem.id, this.selectedItem).subscribe(() => this.loadAll());
+    } else {
+      this.${kebabName}Service.create(this.selectedItem).subscribe(() => this.loadAll());
+    }
+    this.selectedItem = null;
+  }
+${customMethods}
 }
 `.trim();
 }
@@ -342,69 +368,83 @@ ${metodos}
   }
 }
 
-private generateAngularComponentHtml(classData: any): string {
-  const atributos = (classData.atributos || [])
-    .map((a: any) => {
-      const match = a.text.match(/([+\-#])?\s*([\w\d_]+)\s*:\s*([\w\d_]+)/);
-      if (match) {
-        const nombre = match[2];
-        const tipo = match[3];
-        let inputType = 'text';
-        if (tipo.toLowerCase().includes('int') || tipo.toLowerCase().includes('float') || tipo.toLowerCase().includes('number')) {
-          inputType = 'number';
-        }
-        return `
-        <div class="col-md-6">
-          <div class="form-group">
-            <label>${this.capitalize(nombre)} (${this.capitalize(tipo)}):</label>
-            <input type="${inputType}" class="form-control" placeholder="Ingrese ${nombre}">
-          </div>
-        </div>`;
-      }
-      return '';
-    })
-    .join('\n');
+private generateAngularComponentHtml(classData: any, classes: any[], relations: any[]): string {
+  const className = classData.nombre.replace(/\s/g, '');
+  const kebabName = className.toLowerCase();
 
-  const metodos = (classData.metodos || [])
+  // Herencia de métodos
+  const herencia = relations.find(rel =>
+    rel.category === 'Herencia' &&
+    (rel.from === classData.key || rel.from === classData.nombre)
+  );
+  let parentMethods: any[] = [];
+  if (herencia) {
+    const parentClass = classes.find(c => c.key === herencia.to || c.nombre === herencia.to);
+    if (parentClass) {
+      parentMethods = parentClass.metodos || [];
+    }
+  }
+  const allMethods = [
+    ...(classData.metodos || []),
+    ...parentMethods.filter(pm =>
+      !(classData.metodos || []).some((m: any) => m.text === pm.text)
+    )
+  ];
+
+  const metodos = allMethods
     .map((m: any) => {
       const match = m.text.match(/([+\-#])?\s*([\w\d_]+)\s*\(\)\s*:\s*([\w\d_]+)/);
       if (match) {
-        const nombre = this.capitalize(match[2]);
-        return `
-        <div class="col-md-4">
-          <button class="btn btn-primary w-100">${nombre}</button>
-        </div>`;
+        const nombre = match[2];
+        return `<button class="btn btn-warning mt-2" (click)="${nombre}()">${nombre}</button>`;
       }
       return '';
     })
     .join('\n');
 
   return `
-<app-menu></app-menu> 
+<app-menu></app-menu>
 <div class="container mt-4">
   <h2 class="mb-4">${this.capitalize(classData.nombre)}</h2>
 
-  <div class="card mb-4">
-    <div class="card-header">
-      <h4>Propiedades</h4>
-    </div>
-    <div class="card-body">
-      <div class="row g-3">
-        ${atributos}
+  <button class="btn btn-success mb-2" (click)="selectedItem = {}">Nuevo</button>
+
+  <table class="table">
+    <thead>
+      <tr>
+        <th *ngFor="let key of items[0] ? Object.keys(items[0]) : []">{{ key }}</th>
+        <th>Acciones</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr *ngFor="let item of items">
+        <td *ngFor="let key of Object.keys(item)">{{ item[key] }}</td>
+        <td>
+          <button class="btn btn-primary btn-sm" (click)="selectItem(item)">Editar</button>
+        </td>
+      </tr>
+    </tbody>
+  </table>
+
+<div *ngIf="selectedItem">
+    <form (ngSubmit)="save()">
+      <div *ngFor="let key of getKeys(selectedItem)">
+        <ng-container *ngIf="key !== 'id'">
+          <label>{{ key }}</label>
+          <input
+            [(ngModel)]="selectedItem[key]"
+            [name]="key"
+            class="form-control"
+          />
+        </ng-container>
       </div>
-    </div>
+      <button class="btn btn-primary mt-2" type="submit">Guardar</button>
+      <button class="btn btn-secondary mt-2" type="button" (click)="selectedItem = null">Cancelar</button>
+    </form>
   </div>
 
-  <div class="card">
-    <div class="card-header">
-      <h4>Métodos</h4>
-    </div>
-    <div class="card-body">
-      <div class="row g-3">
-        ${metodos}
-      </div>
-    </div>
-  </div>
+  <!-- Métodos personalizados -->
+  ${metodos}
 </div>
 `.trim();
 }
@@ -490,7 +530,9 @@ ${associations}
 
 ${syncModels}
 
-module.exports = sequelize;
+module.exports = {sequelize,
+  models: {
+    ${classes.map(c => c.nombre.replace(/\s/g, '')).join(',\n    ')};
 `.trim();
 }
 
@@ -578,7 +620,7 @@ exports.getBy${relatedClassName} = async (req, res) => {
   }
 
   return `
-const db = require('../db');
+const { models } = require('../db');
 
 // Obtener todos
 exports.getAll = async (req, res) => {
@@ -729,7 +771,7 @@ private getClassRelations(classData: any, relations: any[]): any[] {
 private generateAngularServiceCode(classData: any, relations: any[], classes: any[]): string {
   const className = classData.nombre.replace(/\s/g, '');
   const kebabName = className.toLowerCase();
-  const apiUrl = `/api/${kebabName}`;
+  const apiUrl = `http://localhost:3001/api/${kebabName}`;
 
   // Herencia de métodos
   const herencia = relations.find(rel =>
@@ -757,7 +799,7 @@ private generateAngularServiceCode(classData: any, relations: any[], classes: an
       const nombre = match[2];
       return `
   ${nombre}(data: any): Observable<any> {
-    return this.http.post<any>(\`${apiUrl}/${nombre}\`, data);
+  return this.http.post<any>(\`\${this.apiUrl}/${nombre}\`, data);
   }`;
     }
     return '';
@@ -792,4 +834,5 @@ export class ${className}Service {
 ${customMethods}
 }
 `.trim();
+}
 }

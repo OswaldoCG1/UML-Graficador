@@ -1,2 +1,10 @@
-<input [(ngModel)]="projectName" placeholder="Nombre proyecto" />
-<button (click)="generate()">Generar proyecto</button>
+<div class="codegen-bar">
+  <input
+    [(ngModel)]="projectName"
+    placeholder="Nombre del proyecto"
+    class="codegen-input"
+  />
+  <button class="codegen-btn" (click)="generate()">
+    <i class="fa fa-cogs"></i> Generar proyecto
+  </button>
+</div>

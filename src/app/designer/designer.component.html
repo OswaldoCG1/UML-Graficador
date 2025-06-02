@@ -1,9 +1,29 @@
 <div class="menu-container">
   <nav class="toolbar">
-    <div class="logo">UML Designer</div>
-    <button (click)="exportDiagram()">Exportar</button>
-    <input type="file" (change)="importDiagram($event)" />
-    <app-code-generator [diagramData]="diagramData"></app-code-generator>
+    <div class="toolbar-left">
+      <span class="logo"><i class="fa fa-cubes"></i> UML Designer</span>
+    </div>
+    <div class="toolbar-center">
+      <button
+        class="toolbar-btn"
+        (click)="exportDiagram()"
+        title="Exportar diagrama"
+      >
+        <i class="fa fa-download"></i> Exportar
+      </button>
+      <button class="toolbar-btn">
+        <label class="toolbar-btn upload-btn" title="Cargar proyecto">
+          <i class="fa fa-upload"></i> Cargar proyecto
+          <input type="file" (change)="importDiagram($event)" hidden />
+        </label>
+      </button>
+      <button class="toolbar-btn" (click)="exportarPDF()" title="Exportar PDF">
+        <i class="fa fa-file-pdf-o"></i> PDF
+      </button>
+    </div>
+    <div class="toolbar-right">
+      <app-code-generator [diagramData]="diagramData"></app-code-generator>
+    </div>
   </nav>
   <div class="workspace">
     <div class="palette-container">
